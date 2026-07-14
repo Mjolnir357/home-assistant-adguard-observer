@@ -134,10 +134,40 @@ class ObserverTests(unittest.TestCase):
                 "ip_address": "172.30.32.1",
                 "hostname": "a0d7b954_adguard",
                 "ingress_port": 63827,
+                "ingress_entry": "/api/hassio_ingress/sensitive-token",
             },
         )
-        self.assertEqual(candidates[0], "http://172.30.32.1:63827")
+        self.assertEqual(
+            candidates[0],
+            "http://homeassistant:8123/api/hassio_ingress/sensitive-token",
+        )
         self.assertIn("http://a0d7b954-adguard:63827", candidates)
+
+    def test_ingress_token_is_redacted_from_reported_endpoint(self) -> None:
+        endpoint = observer.redact_url(
+            "http://homeassistant:8123/api/hassio_ingress/sensitive-token"
+        )
+        self.assertEqual(
+            endpoint,
+            "http://homeassistant:8123/api/hassio_ingress/[redacted]",
+        )
+
+    def test_basic_auth_is_not_sent_through_home_assistant_ingress(self) -> None:
+        class FakeHttp:
+            def __init__(self) -> None:
+                self.headers: dict[str, str] = {}
+
+            def get_json(self, _url: str, headers: dict[str, str]) -> dict[str, object]:
+                self.headers = headers
+                return {"data": []}
+
+        fake_http = FakeHttp()
+        client = observer.AdGuardClient(fake_http, "adguard-user", "adguard-password")
+        client.query_log(
+            ["http://homeassistant:8123/api/hassio_ingress/sensitive-token"],
+            50,
+        )
+        self.assertNotIn("Authorization", fake_http.headers)
 
     def test_options_reject_empty_collection(self) -> None:
         with self.assertRaisesRegex(observer.ObserverError, "At least one"):
