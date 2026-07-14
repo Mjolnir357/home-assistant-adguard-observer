@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- Grant the Supervisor `manager` role required to discover and inspect the separate AdGuard app.
+- Document the elevated permission boundary and the observer's read-only Supervisor behavior.
+- Add CI enforcement requiring app changes to increase the Home Assistant app version.
+
 ## 0.1.1
 
 - Route automatic AdGuard API access through Home Assistant's authenticated ingress proxy.

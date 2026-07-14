@@ -1,5 +1,5 @@
 name: AdGuard DNS Observer
-version: "0.1.1"
+version: "0.1.2"
 slug: adguard_dns_observer
 description: Change-only diagnostics for AdGuard Home DNS failures
 url: https://github.com/Mjolnir357/home-assistant-adguard-observer
@@ -10,7 +10,7 @@ startup: application
 boot: auto
 init: false
 hassio_api: true
-hassio_role: default
+hassio_role: manager
 options:
   poll_interval_seconds: 300
   diagnostic_window_seconds: 600

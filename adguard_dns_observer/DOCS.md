@@ -17,6 +17,15 @@ The app requests the minimum Home Assistant Supervisor access needed to:
 
 It does not require SSH, host networking, Docker access, privileged mode, or a new LAN port.
 
+### Supervisor permission boundary
+
+Home Assistant requires the Supervisor `manager` role before one app can discover or read the
+details and logs of another installed app. AdGuard DNS Observer therefore declares
+`hassio_role: manager`. The observer itself issues only Supervisor `GET` requests; it contains no
+code path that starts, stops, updates, reconfigures, or removes an app. This permission is broader
+than the operations the observer performs, but a lower Supervisor role returns `403` for the
+required AdGuard discovery and log endpoints.
+
 ## Initial configuration
 
 The defaults track `192.168.3.238`, the current address associated with the unidentified client.
