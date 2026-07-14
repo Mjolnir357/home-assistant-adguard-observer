@@ -12,8 +12,8 @@ The app requests the minimum Home Assistant Supervisor access needed to:
 
 1. Find the running AdGuard Home app.
 2. Read the AdGuard app's recent operational logs.
-3. Discover AdGuard's internal address and dynamic ingress port.
-4. Query `/control/querylog` over the internal Home Assistant app network.
+3. Discover AdGuard's private Home Assistant ingress entry.
+4. Query `/control/querylog` through Home Assistant's internal ingress proxy.
 
 It does not require SSH, host networking, Docker access, privileged mode, or a new LAN port.
 
@@ -22,10 +22,10 @@ It does not require SSH, host networking, Docker access, privileged mode, or a n
 The defaults track `192.168.3.238`, the current address associated with the unidentified client.
 Multiple tracked addresses can be entered as a comma-separated string.
 
-Leave `adguard_addon_slug` and `adguard_url` empty for automatic discovery. If automatic access to
-the query log returns `authentication_required`, enter the AdGuard web-interface username and
-password in the app configuration. Those credentials are used only for HTTP Basic authentication
-to the local AdGuard API.
+Leave `adguard_addon_slug` and `adguard_url` empty for automatic discovery. Automatic discovery
+uses Home Assistant ingress and does not require an AdGuard username or password. The optional
+AdGuard credentials are used only when `adguard_url` explicitly points to a direct AdGuard API
+that requires HTTP Basic authentication.
 
 Recommended initial values:
 
@@ -82,4 +82,3 @@ Until this repository is published, it can be tested as a local Home Assistant a
 `adguard_dns_observer` folder into `/addons/adguard_dns_observer`, reloading the app store, building,
 and starting the local app. Once published, add the repository URL through the Home Assistant app
 store and install it normally.
-

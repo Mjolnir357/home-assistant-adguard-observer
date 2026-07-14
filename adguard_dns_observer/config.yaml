@@ -1,5 +1,5 @@
 name: AdGuard DNS Observer
-version: "0.1.0"
+version: "0.1.1"
 slug: adguard_dns_observer
 description: Change-only diagnostics for AdGuard Home DNS failures
 url: https://github.com/Mjolnir357/home-assistant-adguard-observer
@@ -49,4 +49,3 @@ schema:
   syslog_enabled: bool
   syslog_host: str
   syslog_port: port
-

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Route automatic AdGuard API access through Home Assistant's authenticated ingress proxy.
+- Stop misclassifying the AdGuard ingress IP allowlist response as bad credentials.
+- Redact the private ingress token from diagnostic event output.
+- Never forward configured AdGuard Basic credentials through Home Assistant ingress.
+
 ## 0.1.0
 
 - Initial standalone Home Assistant app repository.
@@ -7,4 +14,3 @@
 - Failure-focused query-log analysis with domain privacy controls.
 - Change-only state and event persistence.
 - Optional Wazuh/syslog transition output.
-

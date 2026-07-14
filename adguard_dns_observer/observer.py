@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import signal
 import socket
@@ -194,7 +195,12 @@ class HttpClient:
             ) as response:
                 return response.read(), response.headers.get("Content-Type", "")
         except HTTPError as exc:
-            message = "authentication_required" if exc.code in {401, 403} else f"http_{exc.code}"
+            if exc.code == 401:
+                message = "authentication_required"
+            elif exc.code == 403:
+                message = "access_forbidden"
+            else:
+                message = f"http_{exc.code}"
             raise RequestError(message, status=exc.code) from exc
         except (URLError, TimeoutError, OSError) as exc:
             reason = getattr(exc, "reason", None)
@@ -272,8 +278,15 @@ class AdGuardClient:
         failures: list[str] = []
         for base_url in base_urls:
             url = f"{base_url.rstrip('/')}/control/querylog?{urlencode({'limit': limit})}"
+            headers = self.headers
+            if "/api/hassio_ingress/" in base_url:
+                headers = {
+                    key: value
+                    for key, value in self.headers.items()
+                    if key.lower() != "authorization"
+                }
             try:
-                payload = self.http.get_json(url, self.headers)
+                payload = self.http.get_json(url, headers)
                 entries = payload.get("data", [])
                 if not isinstance(entries, list):
                     raise RequestError("unexpected_query_log_response")
@@ -452,7 +465,13 @@ def redact_url(url: str) -> str:
     netloc = hostname
     if parts.port:
         netloc = f"{hostname}:{parts.port}"
-    return urlunsplit((parts.scheme, netloc, parts.path.rstrip("/"), "", ""))
+    path = re.sub(
+        r"(/api/hassio_ingress/)[^/]+",
+        r"\1[redacted]",
+        parts.path.rstrip("/"),
+        count=1,
+    )
+    return urlunsplit((parts.scheme, netloc, path, "", ""))
 
 
 def adguard_url_candidates(override: str, info: dict[str, Any]) -> list[str]:
@@ -460,10 +479,15 @@ def adguard_url_candidates(override: str, info: dict[str, Any]) -> list[str]:
         return [override.rstrip("/")]
 
     candidates: list[str] = []
+    ingress_entry = str(info.get("ingress_entry") or "").strip()
     ip_address = str(info.get("ip_address") or "").strip()
     hostname = str(info.get("hostname") or "").strip().replace("_", "-")
     ingress_port = int(info.get("ingress_port") or 0)
 
+    if ingress_entry:
+        if not ingress_entry.startswith("/"):
+            ingress_entry = f"/{ingress_entry}"
+        candidates.append(f"http://homeassistant:8123{ingress_entry.rstrip('/')}")
     if ip_address and ingress_port:
         candidates.append(f"http://{ip_address}:{ingress_port}")
     if hostname and ingress_port:
