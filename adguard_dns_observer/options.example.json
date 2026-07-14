@@ -1,0 +1,21 @@
+{
+  "poll_interval_seconds": 300,
+  "diagnostic_window_seconds": 600,
+  "query_log_limit": 500,
+  "slow_query_ms": 1000,
+  "slow_query_count_threshold": 5,
+  "adguard_addon_slug": "",
+  "adguard_url": "",
+  "adguard_username": "",
+  "adguard_password": "",
+  "verify_tls": true,
+  "collect_supervisor_logs": true,
+  "collect_query_log": true,
+  "tracked_clients": "192.168.3.238",
+  "domain_privacy": "hash",
+  "event_log_max_bytes": 1048576,
+  "syslog_enabled": false,
+  "syslog_host": "",
+  "syslog_port": 5514
+}
+

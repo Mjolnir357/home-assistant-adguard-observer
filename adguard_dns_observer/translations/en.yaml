@@ -1,0 +1,56 @@
+configuration:
+  poll_interval_seconds:
+    name: Poll interval
+    description: Seconds between diagnostic snapshots.
+  diagnostic_window_seconds:
+    name: Diagnostic window
+    description: Only AdGuard queries newer than this window are analyzed.
+  query_log_limit:
+    name: Query log limit
+    description: Maximum recent query-log entries requested from AdGuard.
+  slow_query_ms:
+    name: Slow query threshold
+    description: Queries at or above this duration are classified as slow.
+  slow_query_count_threshold:
+    name: Slow query incident count
+    description: Number of slow queries in the window required to open an incident.
+  adguard_addon_slug:
+    name: AdGuard app slug
+    description: Leave empty to discover the installed AdGuard Home app automatically.
+  adguard_url:
+    name: AdGuard API URL
+    description: Optional override; leave empty to use Supervisor discovery.
+  adguard_username:
+    name: AdGuard username
+    description: Optional Basic authentication username for the AdGuard API.
+  adguard_password:
+    name: AdGuard password
+    description: Optional Basic authentication password for the AdGuard API.
+  verify_tls:
+    name: Verify TLS
+    description: Verify certificates when the AdGuard URL uses HTTPS.
+  collect_supervisor_logs:
+    name: Collect operational logs
+    description: Read recent AdGuard app logs through the Supervisor API.
+  collect_query_log:
+    name: Analyze query log
+    description: Analyze recent AdGuard query results without retaining every query.
+  tracked_clients:
+    name: Tracked client IPs
+    description: Comma-separated client IPs whose diagnostic state should be followed.
+  domain_privacy:
+    name: Domain privacy
+    description: Hash, redact, or retain domains in emitted incident samples.
+  event_log_max_bytes:
+    name: Event log size
+    description: Rotate the local change-only event log at this size.
+  syslog_enabled:
+    name: Send syslog events
+    description: Send transition events to an existing Wazuh or syslog listener.
+  syslog_host:
+    name: Syslog host
+    description: Destination host used when syslog is enabled.
+  syslog_port:
+    name: Syslog port
+    description: UDP destination port used when syslog is enabled.
+

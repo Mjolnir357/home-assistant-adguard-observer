@@ -1,0 +1,52 @@
+name: AdGuard DNS Observer
+version: "0.1.0"
+slug: adguard_dns_observer
+description: Change-only diagnostics for AdGuard Home DNS failures
+url: https://github.com/Mjolnir357/home-assistant-adguard-observer
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+hassio_api: true
+hassio_role: default
+options:
+  poll_interval_seconds: 300
+  diagnostic_window_seconds: 600
+  query_log_limit: 500
+  slow_query_ms: 1000
+  slow_query_count_threshold: 5
+  adguard_addon_slug: ""
+  adguard_url: ""
+  adguard_username: ""
+  adguard_password: ""
+  verify_tls: true
+  collect_supervisor_logs: true
+  collect_query_log: true
+  tracked_clients: "192.168.3.238"
+  domain_privacy: hash
+  event_log_max_bytes: 1048576
+  syslog_enabled: false
+  syslog_host: ""
+  syslog_port: 5514
+schema:
+  poll_interval_seconds: "int(60,3600)"
+  diagnostic_window_seconds: "int(60,86400)"
+  query_log_limit: "int(50,5000)"
+  slow_query_ms: "int(50,60000)"
+  slow_query_count_threshold: "int(1,1000)"
+  adguard_addon_slug: str
+  adguard_url: str
+  adguard_username: str
+  adguard_password: password
+  verify_tls: bool
+  collect_supervisor_logs: bool
+  collect_query_log: bool
+  tracked_clients: str
+  domain_privacy: "list(hash|redact|plain)"
+  event_log_max_bytes: "int(65536,10485760)"
+  syslog_enabled: bool
+  syslog_host: str
+  syslog_port: port
+
