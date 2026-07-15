@@ -13,7 +13,8 @@ The app requests the minimum Home Assistant Supervisor access needed to:
 1. Find the running AdGuard Home app.
 2. Read the AdGuard app's recent operational logs.
 3. Discover AdGuard's private Home Assistant ingress entry.
-4. Query `/control/querylog` through Home Assistant's internal ingress proxy.
+4. Ask Home Assistant Core for a short-lived ingress session using the app's rotating token.
+5. Query `/control/querylog` through Home Assistant's internal ingress proxy.
 
 It does not require SSH, host networking, Docker access, privileged mode, or a new LAN port.
 
@@ -21,10 +22,13 @@ It does not require SSH, host networking, Docker access, privileged mode, or a n
 
 Home Assistant requires the Supervisor `manager` role before one app can discover or read the
 details and logs of another installed app. AdGuard DNS Observer therefore declares
-`hassio_role: manager`. The observer itself issues only Supervisor `GET` requests; it contains no
-code path that starts, stops, updates, reconfigures, or removes an app. This permission is broader
-than the operations the observer performs, but a lower Supervisor role returns `403` for the
-required AdGuard discovery and log endpoints.
+`hassio_role: manager`. It also declares `homeassistant_api: true` so its rotating Supervisor token
+can authenticate to Home Assistant Core's internal WebSocket API and request an ingress session.
+The observer performs read-only discovery and log requests plus that session-creation request; it
+contains no code path that starts, stops, updates, reconfigures, or removes an app. The session is
+kept in memory only, sent solely to Home Assistant's trusted ingress host, and never written to
+state or events. A lower Supervisor role returns `403` for the required AdGuard discovery and log
+endpoints.
 
 ## Initial configuration
 

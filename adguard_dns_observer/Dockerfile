@@ -8,8 +8,8 @@ LABEL io.hass.version="${BUILD_VERSION}" \
       io.hass.arch="${BUILD_ARCH}"
 
 WORKDIR /opt/adguard-dns-observer
+RUN pip install --no-cache-dir "websockets==15.0.1"
 COPY observer.py ./
 
 ENTRYPOINT ["python3", "/opt/adguard-dns-observer/observer.py"]
 CMD ["--config", "/data/options.json", "--state", "/data/state.json", "--events", "/data/events.jsonl"]
-
