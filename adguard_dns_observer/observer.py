@@ -16,6 +16,7 @@ import ssl
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -266,9 +267,93 @@ class SupervisorClient:
         return body.decode("utf-8", errors="replace")
 
 
+class HomeAssistantIngressClient:
+    """Create a short-lived ingress session through Home Assistant Core."""
+
+    def __init__(
+        self,
+        token: str,
+        websocket_url: str = "ws://supervisor/core/api/websocket",
+        connector: Callable[..., Any] | None = None,
+    ) -> None:
+        if not token:
+            raise ObserverError("SUPERVISOR_TOKEN is unavailable")
+        self.token = token
+        self.websocket_url = websocket_url
+        self.connector = connector
+
+    @staticmethod
+    def _message(raw: Any) -> dict[str, Any]:
+        try:
+            message = json.loads(raw)
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RequestError("invalid_home_assistant_response") from exc
+        if not isinstance(message, dict):
+            raise RequestError("unexpected_home_assistant_response")
+        return message
+
+    def create_session(self) -> str:
+        connector = self.connector
+        if connector is None:
+            try:
+                from websockets.sync.client import connect
+            except ImportError as exc:
+                raise RequestError("ingress_session_client_unavailable") from exc
+            connector = connect
+
+        try:
+            with connector(
+                self.websocket_url,
+                proxy=None,
+                open_timeout=10,
+                close_timeout=5,
+                max_size=1_048_576,
+            ) as websocket:
+                initial = self._message(websocket.recv())
+                if initial.get("type") != "auth_required":
+                    raise RequestError("unexpected_home_assistant_auth_state")
+
+                websocket.send(json.dumps({"type": "auth", "access_token": self.token}))
+                authenticated = self._message(websocket.recv())
+                if authenticated.get("type") != "auth_ok":
+                    raise RequestError("home_assistant_authentication_failed")
+
+                websocket.send(
+                    json.dumps(
+                        {
+                            "id": 1,
+                            "type": "supervisor/api",
+                            "endpoint": "/ingress/session",
+                            "method": "post",
+                        }
+                    )
+                )
+                result = self._message(websocket.recv())
+                if result.get("id") != 1 or result.get("type") != "result":
+                    raise RequestError("unexpected_ingress_session_response")
+                if result.get("success") is not True:
+                    raise RequestError("ingress_session_denied")
+                data = result.get("result")
+                session = data.get("session") if isinstance(data, dict) else None
+                if not isinstance(session, str) or not session:
+                    raise RequestError("ingress_session_unavailable")
+                return session
+        except RequestError:
+            raise
+        except Exception as exc:
+            raise RequestError("ingress_session_unavailable") from exc
+
+
 class AdGuardClient:
-    def __init__(self, http: HttpClient, username: str = "", password: str = "") -> None:
+    def __init__(
+        self,
+        http: HttpClient,
+        username: str = "",
+        password: str = "",
+        ingress_session_factory: Callable[[], str] | None = None,
+    ) -> None:
         self.http = http
+        self.ingress_session_factory = ingress_session_factory
         self.headers = {"Accept": "application/json"}
         if username or password:
             token = base64.b64encode(f"{username}:{password}".encode()).decode()
@@ -279,12 +364,15 @@ class AdGuardClient:
         for base_url in base_urls:
             url = f"{base_url.rstrip('/')}/control/querylog?{urlencode({'limit': limit})}"
             headers = self.headers
-            if "/api/hassio_ingress/" in base_url:
+            if is_home_assistant_ingress_url(base_url):
+                if self.ingress_session_factory is None:
+                    raise RequestError("ingress_session_unavailable")
                 headers = {
                     key: value
                     for key, value in self.headers.items()
                     if key.lower() != "authorization"
                 }
+                headers["Cookie"] = f"ingress_session={self.ingress_session_factory()}"
             try:
                 payload = self.http.get_json(url, headers)
                 entries = payload.get("data", [])
@@ -472,6 +560,15 @@ def redact_url(url: str) -> str:
         count=1,
     )
     return urlunsplit((parts.scheme, netloc, path, "", ""))
+
+
+def is_home_assistant_ingress_url(url: str) -> bool:
+    parts = urlsplit(url)
+    return (
+        parts.scheme in {"http", "https"}
+        and parts.hostname == "homeassistant"
+        and parts.path.startswith("/api/hassio_ingress/")
+    )
 
 
 def adguard_url_candidates(override: str, info: dict[str, Any]) -> list[str]:
@@ -750,8 +847,15 @@ def main(argv: list[str] | None = None) -> int:
         store = StateStore(args.state)
         state = store.load()
         http = HttpClient(verify_tls=options.verify_tls)
-        supervisor = SupervisorClient(http, os.environ.get("SUPERVISOR_TOKEN", ""))
-        adguard = AdGuardClient(http, options.adguard_username, options.adguard_password)
+        supervisor_token = os.environ.get("SUPERVISOR_TOKEN", "")
+        supervisor = SupervisorClient(http, supervisor_token)
+        ingress = HomeAssistantIngressClient(supervisor_token)
+        adguard = AdGuardClient(
+            http,
+            options.adguard_username,
+            options.adguard_password,
+            ingress.create_session,
+        )
         observer = Observer(options, state, supervisor, adguard)
         sink = EventSink(
             args.events,

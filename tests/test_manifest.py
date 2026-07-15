@@ -13,6 +13,9 @@ class ManifestTests(unittest.TestCase):
     def test_manager_role_is_declared_for_cross_app_reads(self) -> None:
         self.assertRegex(CONFIG, r"(?m)^hassio_role:\s+manager$")
 
+    def test_home_assistant_api_is_declared_for_ingress_sessions(self) -> None:
+        self.assertRegex(CONFIG, r"(?m)^homeassistant_api:\s+true$")
+
     def test_manifest_version_has_matching_changelog_entry(self) -> None:
         match = re.search(r'(?m)^version:\s+"([0-9]+\.[0-9]+\.[0-9]+)"$', CONFIG)
         self.assertIsNotNone(match)

@@ -162,12 +162,93 @@ class ObserverTests(unittest.TestCase):
                 return {"data": []}
 
         fake_http = FakeHttp()
-        client = observer.AdGuardClient(fake_http, "adguard-user", "adguard-password")
+        client = observer.AdGuardClient(
+            fake_http,
+            "adguard-user",
+            "adguard-password",
+            ingress_session_factory=lambda: "short-lived-session",
+        )
         client.query_log(
             ["http://homeassistant:8123/api/hassio_ingress/sensitive-token"],
             50,
         )
         self.assertNotIn("Authorization", fake_http.headers)
+        self.assertEqual(fake_http.headers["Cookie"], "ingress_session=short-lived-session")
+
+    def test_ingress_session_is_created_through_home_assistant_core(self) -> None:
+        class FakeWebSocket:
+            def __init__(self) -> None:
+                self.responses = iter(
+                    [
+                        json.dumps({"type": "auth_required"}),
+                        json.dumps({"type": "auth_ok"}),
+                        json.dumps(
+                            {
+                                "id": 1,
+                                "type": "result",
+                                "success": True,
+                                "result": {"session": "created-session"},
+                            }
+                        ),
+                    ]
+                )
+                self.sent: list[dict[str, object]] = []
+
+            def __enter__(self) -> FakeWebSocket:
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                return None
+
+            def recv(self) -> str:
+                return next(self.responses)
+
+            def send(self, payload: str) -> None:
+                self.sent.append(json.loads(payload))
+
+        websocket = FakeWebSocket()
+        connection: dict[str, object] = {}
+
+        def connect(url: str, **kwargs: object) -> FakeWebSocket:
+            connection.update({"url": url, **kwargs})
+            return websocket
+
+        client = observer.HomeAssistantIngressClient("rotating-token", connector=connect)
+        self.assertEqual(client.create_session(), "created-session")
+        self.assertEqual(connection["url"], "ws://supervisor/core/api/websocket")
+        self.assertIsNone(connection["proxy"])
+        self.assertEqual(
+            websocket.sent,
+            [
+                {"type": "auth", "access_token": "rotating-token"},
+                {
+                    "id": 1,
+                    "type": "supervisor/api",
+                    "endpoint": "/ingress/session",
+                    "method": "post",
+                },
+            ],
+        )
+
+    def test_ingress_cookie_is_not_sent_to_an_untrusted_host(self) -> None:
+        class FakeHttp:
+            def __init__(self) -> None:
+                self.headers: dict[str, str] = {}
+
+            def get_json(self, _url: str, headers: dict[str, str]) -> dict[str, object]:
+                self.headers = headers
+                return {"data": []}
+
+        fake_http = FakeHttp()
+        client = observer.AdGuardClient(
+            fake_http,
+            "adguard-user",
+            "adguard-password",
+            ingress_session_factory=lambda: "must-not-leak",
+        )
+        client.query_log(["http://example.test/api/hassio_ingress/lookalike"], 50)
+        self.assertNotIn("Cookie", fake_http.headers)
+        self.assertIn("Authorization", fake_http.headers)
 
     def test_options_reject_empty_collection(self) -> None:
         with self.assertRaisesRegex(observer.ObserverError, "At least one"):

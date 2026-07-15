@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Obtain a short-lived Home Assistant ingress session before reading the AdGuard query log.
+- Authenticate through Home Assistant Core with the rotating app token instead of storing user credentials.
+- Keep ingress cookies and tokens out of diagnostic event output.
+
 ## 0.1.2
 
 - Grant the Supervisor `manager` role required to discover and inspect the separate AdGuard app.
